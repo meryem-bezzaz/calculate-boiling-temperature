@@ -206,13 +206,13 @@
   </main>
 
   <footer>
-    Structures moléculaires : PubChem PUG REST (fichiers SDF 3D), rendu avec 3Dmol.js. Modèle thermodynamique :
+    Structures moléculaires : PubChem PUG REST (fichiers SDF 3D), rendu avec <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.5.5/3Dmol-min.js"></script>. Modèle thermodynamique :
     intégration de Clausius-Clapeyron entre 25 °C et la pression choisie, Δ<sub>vap</sub>H supposée constante
     (NIST WebBook ; Keating, Harris &amp; Chickos, <em>J. Chem. Thermodyn.</em> 107 (2017) pour le menthol).
   </footer>
 </div>
 
-<script src="https://3Dmol.org/build/<script src="https://3Dmol.org/build/3Dmol-min.js"></script>"></script>
+<script src="https://3Dmol.org/build/<script src="<script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.5.5/3Dmol-min.js"></script>"></script>"></script>
 <script>
 (function(){
   "use strict";
@@ -364,7 +364,7 @@
     statusEl.textContent = 'chargement de la structure…';
     statusEl.classList.remove('hidden');
 
-    if (!viewer) { statusEl.textContent = '3Dmol.js indisponible.'; return; }
+    if (!viewer) { statusEl.textContent = 3Dmol.js indisponible.'; return; }
 
     if (cache[mol.cid]) { renderSDF(cache[mol.cid]); return; }
 
