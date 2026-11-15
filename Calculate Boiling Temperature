@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Calculate Boiling Temperature</title>
+<meta name="description" content="Calculate Boiling Temperature — visualisation moléculaire 3D (PubChem) et estimation de température d'ébullition par Clausius-Clapeyron pour 8 molécules de référence." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a1512; --bg-2:#0d1f1a; --surface:#102420; --surface-2:#132b25; --line:#1c3a33;
+    --mint:#7CF2C9; --mint-dim:#4FAE92; --ice:#BFEFE3; --coral:#FF8A72;
+    --text:#EAF5F0; --muted:#8FB2A7; --faint:#5C7E73;
+    --mono:'IBM Plex Mono',ui-monospace,monospace; --sans:'IBM Plex Sans',system-ui,sans-serif;
+    --serif:'Fraunces',Georgia,serif; --ease:cubic-bezier(.22,.68,.26,.99);
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0; background:var(--bg); color:var(--text); font-family:var(--sans);
+    -webkit-font-smoothing:antialiased; padding-bottom:env(safe-area-inset-bottom,0px); overflow-x:hidden;}
+  a{color:var(--mint);}
+  ::selection{background:var(--mint); color:#06120e;}
+
+  /* ---------- LOGIN ---------- */
+  #login-gate{position:fixed; inset:0; z-index:200; background:var(--bg); display:flex;
+    align-items:center; justify-content:center; padding:24px;
+    padding-top:calc(24px + env(safe-area-inset-top,0px));}
+  #login-gate.hidden{display:none;}
+  #login-form{width:100%; max-width:360px; background:var(--surface); border:1px solid var(--line);
+    border-radius:10px; padding:34px 30px; text-align:center;}
+  .login-badge{display:inline-block; font-family:var(--mono); font-size:0.68rem; letter-spacing:.05em;
+    text-transform:uppercase; color:var(--mint); background:rgba(124,242,201,0.08);
+    border:1px solid rgba(124,242,201,0.28); border-radius:999px; padding:5px 12px; margin-bottom:16px;}
+  #login-form h1{font-family:var(--serif); font-size:1.5rem; color:var(--ice); margin:0 0 4px;}
+  #login-form p{margin:0 0 22px; font-size:0.82rem; color:var(--muted);}
+  #login-form label{display:block; text-align:left; font-size:0.74rem; color:var(--muted); margin:14px 0 6px;}
+  #login-form input{width:100%; background:var(--surface-2); border:1px solid var(--line); border-radius:6px;
+    padding:10px 12px; color:var(--text); font-family:var(--sans); font-size:0.92rem;}
+  #login-form input:focus{outline:none; border-color:var(--mint-dim);}
+  #login-form button{width:100%; margin-top:20px; background:var(--mint); color:#06120e; border:none;
+    border-radius:6px; padding:11px; font-weight:600; font-size:0.9rem; cursor:pointer;}
+  #login-form button:hover{background:var(--ice);}
+  .login-error{display:none; margin-top:14px; color:var(--coral); font-size:0.8rem;}
+  .login-error.show{display:block;}
+
+  /* ---------- APP SHELL ---------- */
+  #app{display:none;}
+  #app.visible{display:block;}
+  header.topbar{position:sticky; top:0; z-index:30; padding-top:env(safe-area-inset-top,0px);
+    background:rgba(10,21,18,0.75); backdrop-filter:blur(10px); border-bottom:1px solid var(--line);}
+  .topbar-inner{max-width:1120px; margin:0 auto; padding:14px 24px; display:flex; align-items:center;
+    justify-content:space-between; gap:12px;}
+  .brand{display:flex; align-items:center; gap:9px; font-family:var(--serif); font-size:1.08rem; color:var(--ice);}
+  .brand-dot{width:8px; height:8px; border-radius:50%; background:var(--mint); box-shadow:0 0 10px rgba(124,242,201,.4);}
+  .brand span{color:var(--faint); font-family:var(--mono); font-size:0.78rem; margin-left:2px;}
+  #logout-btn{background:transparent; border:1px solid var(--line); color:var(--muted); border-radius:6px;
+    padding:7px 14px; font-family:var(--mono); font-size:0.76rem; cursor:pointer;}
+  #logout-btn:hover{border-color:var(--mint-dim); color:var(--mint);}
+
+  main{max-width:1120px; margin:0 auto; padding:32px 24px 64px;}
+  .intro{color:var(--muted); font-size:0.92rem; max-width:68ch; line-height:1.6; margin:0 0 28px;}
+
+  .layout{display:grid; grid-template-columns:260px 1fr; gap:24px; align-items:start;}
+  @media (max-width:860px){ .layout{grid-template-columns:1fr;} }
+
+  .panel{background:var(--surface); border:1px solid var(--line); border-radius:10px;}
+  .mol-list{padding:10px;}
+  .mol-btn{display:block; width:100%; text-align:left; background:transparent; border:none;
+    border-radius:7px; padding:11px 13px; color:var(--muted); font-family:var(--sans); font-size:0.9rem;
+    cursor:pointer; margin-bottom:2px; transition:background .18s var(--ease), color .18s var(--ease);}
+  .mol-btn:hover{background:var(--surface-2); color:var(--text);}
+  .mol-btn.active{background:rgba(124,242,201,0.1); color:var(--ice); border-left:2px solid var(--mint);
+    padding-left:11px;}
+  .mol-btn small{display:block; font-family:var(--mono); font-size:0.72rem; color:var(--faint); margin-top:2px;}
+
+  .viewer-wrap{position:relative; height:360px; border-radius:10px 10px 0 0; overflow:hidden;
+    background:
+      repeating-linear-gradient(0deg, rgba(124,242,201,0.03) 0 1px, transparent 1px 36px),
+      repeating-linear-gradient(90deg, rgba(124,242,201,0.03) 0 1px, transparent 1px 36px),
+      radial-gradient(60% 55% at 50% 40%, rgba(124,242,201,0.08), transparent 70%), var(--bg-2);}
+  #viewer3d{position:absolute; inset:0;}
+  .viewer-hint{position:absolute; right:14px; bottom:12px; font-family:var(--mono); font-size:0.7rem;
+    color:var(--faint); background:rgba(10,21,18,0.6); padding:5px 10px; border-radius:999px;
+    border:1px solid var(--line); pointer-events:none;}
+  .viewer-status{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-family:var(--mono); font-size:0.8rem; color:var(--muted); text-align:center; padding:20px;}
+  .viewer-status.hidden{display:none;}
+
+  .info{padding:22px 26px 26px;}
+  .info-head{display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:10px;
+    margin-bottom:4px;}
+  .info-head h2{font-family:var(--serif); font-size:1.35rem; color:var(--ice); margin:0;}
+  .info-formula{font-family:var(--mono); font-size:1rem; color:var(--mint);}
+  .info-cas{font-family:var(--mono); font-size:0.76rem; color:var(--faint); margin-bottom:18px;}
+
+  .grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px;}
+  @media (max-width:640px){ .grid4{grid-template-columns:repeat(2,1fr);} }
+  .stat{background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:13px 14px;}
+  .stat .l{font-family:var(--mono); font-size:0.66rem; color:var(--faint); text-transform:uppercase;
+    letter-spacing:.03em; margin-bottom:6px;}
+  .stat .v{font-family:var(--mono); font-size:0.98rem; color:var(--text);}
+
+  .compare{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px;}
+  @media (max-width:560px){ .compare{grid-template-columns:1fr;} }
+  .temp-card{border-radius:8px; padding:16px 18px; border-top:2px solid var(--mint); background:var(--surface-2);
+    border:1px solid var(--line); border-top-width:2px;}
+  .temp-card.ref{border-top-color:var(--coral);}
+  .temp-card .l{font-family:var(--mono); font-size:0.7rem; color:var(--muted); text-transform:uppercase;
+    letter-spacing:.03em;}
+  .temp-card .v{font-family:var(--serif); font-size:1.9rem; color:var(--ice); margin-top:6px;}
+  .temp-card .s{font-family:var(--mono); font-size:0.74rem; color:var(--mint-dim); margin-top:4px;}
+
+  .sim-row{display:flex; justify-content:space-between; align-items:baseline; font-size:0.84rem;
+    color:var(--muted); margin-top:4px;}
+  input[type="range"]{-webkit-appearance:none; width:100%; margin:10px 0 4px; height:20px; background:transparent;}
+  input[type="range"]::-webkit-slider-runnable-track{height:5px; border-radius:3px;
+    background:linear-gradient(90deg, var(--mint-dim), var(--line));}
+  input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none; width:16px; height:16px; margin-top:-5.5px;
+    border-radius:50%; background:var(--mint); border:2px solid #06120e; cursor:pointer;
+    box-shadow:0 0 0 4px rgba(124,242,201,.18);}
+
+  .note{margin-top:18px; font-size:0.82rem; color:var(--muted); border-top:1px solid var(--line);
+    padding-top:16px; line-height:1.6;}
+  .note b{color:var(--ice);}
+
+  footer{max-width:1120px; margin:0 auto; padding:0 24px 40px; color:var(--faint); font-size:0.76rem; line-height:1.6;}
+
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important;} }
+</style>
+</head>
+<body>
+
+<div id="login-gate">
+  <form id="login-form" autocomplete="off">
+    <div class="login-badge">accès restreint</div>
+    <h1>Calculate Boiling Temperature</h1>
+    <p>Projet d'ingénierie chimique</p>
+    <label for="login-user">Nom d'utilisateur</label>
+    <input type="text" id="login-user" autocomplete="username" />
+    <label for="login-pass">Mot de passe</label>
+    <input type="password" id="login-pass" autocomplete="current-password" />
+    <button type="submit">Entrer</button>
+    <div class="login-error" id="login-error">Identifiants incorrects.</div>
+  </form>
+</div>
+
+<div id="app">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><span class="brand-dot"></span>Calculate Boiling Temperature<span>· lab</span></div>
+      <button id="logout-btn" type="button">Se déconnecter</button>
+    </div>
+  </header>
+
+  <main>
+    <p class="intro">Choisis une molécule dans la liste : sa structure 3D (données PubChem) s'affiche à droite,
+    avec sa formule, sa masse molaire, et une estimation de sa température d'ébullition par l'équation de
+    Clausius-Clapeyron, comparée à la valeur expérimentale de référence.</p>
+
+    <div class="layout">
+      <nav class="panel mol-list" id="mol-list"></nav>
+
+      <div class="panel">
+        <div class="viewer-wrap">
+          <div id="viewer3d"></div>
+          <div class="viewer-status" id="viewer-status">chargement de la structure…</div>
+          <div class="viewer-hint">glisser pour tourner · molette pour zoomer</div>
+        </div>
+
+        <div class="info">
+          <div class="info-head">
+            <h2 id="info-nom">—</h2>
+            <span class="info-formula" id="info-formule">—</span>
+          </div>
+          <div class="info-cas" id="info-cas">CAS —</div>
+
+          <div class="grid4">
+            <div class="stat"><div class="l">Masse molaire</div><div class="v" id="stat-m">—</div></div>
+            <div class="stat"><div class="l">Point de fusion</div><div class="v" id="stat-fusion">—</div></div>
+            <div class="stat"><div class="l">PubChem CID</div><div class="v" id="stat-cid">—</div></div>
+            <div class="stat"><div class="l">Pression</div><div class="v" id="stat-pression">1,00 atm</div></div>
+          </div>
+
+          <input type="range" id="pressure" min="0.1" max="3" step="0.01" value="1" />
+          <div class="sim-row"><span>0,1 atm</span><span>pression extérieure</span><span>3 atm</span></div>
+
+          <div class="compare" style="margin-top:18px">
+            <div class="temp-card">
+              <div class="l">Température calculée (Clausius-Clapeyron)</div>
+              <div class="v" id="temp-calc">—</div>
+              <div class="s" id="temp-calc-k">—</div>
+            </div>
+            <div class="temp-card ref">
+              <div class="l">Température expérimentale de référence (1 atm)</div>
+              <div class="v" id="temp-ref">—</div>
+              <div class="s" id="temp-ecart">—</div>
+            </div>
+          </div>
+
+          <div class="note" id="mol-note">—</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    Structures moléculaires : PubChem PUG REST (fichiers SDF 3D), rendu avec 3Dmol.js. Modèle thermodynamique :
+    intégration de Clausius-Clapeyron entre 25 °C et la pression choisie, Δ<sub>vap</sub>H supposée constante
+    (NIST WebBook ; Keating, Harris &amp; Chickos, <em>J. Chem. Thermodyn.</em> 107 (2017) pour le menthol).
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.0.1/3Dmol-min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ===========================================================
+     ÉCRAN DE CONNEXION
+     =========================================================== */
+  var USERNAME = "meryem bezzaz";
+  var PASSWORD = "bm123";
+
+  var gate = document.getElementById('login-gate');
+  var app = document.getElementById('app');
+  var form = document.getElementById('login-form');
+  var userInput = document.getElementById('login-user');
+  var passInput = document.getElementById('login-pass');
+  var errorEl = document.getElementById('login-error');
+
+  function enterApp(){ gate.classList.add('hidden'); app.classList.add('visible'); initApp(); }
+
+  if (sessionStorage.getItem('cbtAuth') === '1') { enterApp(); }
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    if (userInput.value === USERNAME && passInput.value === PASSWORD) {
+      sessionStorage.setItem('cbtAuth', '1');
+      errorEl.classList.remove('show');
+      enterApp();
+    } else {
+      errorEl.classList.add('show');
+      passInput.value = '';
+    }
+  });
+
+  document.getElementById('logout-btn') && document.getElementById('logout-btn').addEventListener('click', function(){
+    sessionStorage.removeItem('cbtAuth');
+    location.reload();
+  });
+
+  /* ===========================================================
+     DONNÉES DES 8 MOLÉCULES (vérifiées : NIST WebBook / PubChem)
+     Tref = 298,15 K (25 °C) ; Pref = pression de vapeur (Pa) à Tref ;
+     dHvap = enthalpie de vaporisation (J/mol) à 298 K ; bpLit/meltLit en °C.
+     =========================================================== */
+  var R = 8.314;
+  var MOLECULES = [
+    { key:'methanol', nom:'Méthanol', formule:'CH\u2083OH', M:32.04, cas:'67-56-1', cid:887,
+      Tref:298.15, Pref:16980, dHvap:37600, bpLit:64.7, meltLit:'\u221297,6 °C',
+      note:'Modèle fiable : l\u2019écart entre 25 °C et le point d\u2019ébullition reste faible (~40 °C).' },
+    { key:'ethanol', nom:'Éthanol', formule:'C\u2082H\u2085OH', M:46.07, cas:'64-17-5', cid:702,
+      Tref:298.15, Pref:7870, dHvap:42300, bpLit:78.4, meltLit:'\u2212114 °C',
+      note:'Bonne approximation, écart de température modéré depuis la référence à 25 °C.' },
+    { key:'acetone', nom:'Acétone', formule:'C\u2083H\u2086O', M:58.08, cas:'67-64-1', cid:180,
+      Tref:298.15, Pref:30800, dHvap:31300, bpLit:56.0, meltLit:'\u221294,7 °C',
+      note:'Molécule très volatile : la référence à 25 °C est déjà proche de l\u2019ébullition, le modèle est très précis ici.' },
+    { key:'eau', nom:'Eau', formule:'H\u2082O', M:18.02, cas:'7732-18-5', cid:962,
+      Tref:298.15, Pref:3170, dHvap:43990, bpLit:100.0, meltLit:'0 °C',
+      note:'Référence universelle de la chimie : bon accord malgré les liaisons hydrogène du réseau liquide.' },
+    { key:'acide_acetique', nom:'Acide acétique', formule:'C\u2082H\u2084O\u2082', M:60.05, cas:'64-19-7', cid:176,
+      Tref:298.15, Pref:2090, dHvap:51600, bpLit:118.1, meltLit:'16,6 °C',
+      note:'Écart plus marqué : l\u2019acide acétique forme des dimères liés par liaison hydrogène en phase vapeur, un comportement que Clausius-Clapeyron simple ne capture pas.' },
+    { key:'benzene', nom:'Benzène', formule:'C\u2086H\u2086', M:78.11, cas:'71-43-2', cid:241,
+      Tref:298.15, Pref:12700, dHvap:33900, bpLit:80.1, meltLit:'5,5 °C',
+      note:'Molécule apolaire, sans liaison hydrogène : le modèle à ΔvapH constante est particulièrement fiable.' },
+    { key:'ether', nom:'Éther diéthylique', formule:'C\u2084H\u2081\u2080O', M:74.12, cas:'60-29-7', cid:3283,
+      Tref:298.15, Pref:71700, dHvap:29100, bpLit:34.6, meltLit:'\u2212116,3 °C',
+      note:'Très volatil à température ambiante : la référence à 25 °C est à seulement ~10 °C de l\u2019ébullition, excellente précision attendue.' },
+    { key:'menthol', nom:'Menthol', formule:'C\u2081\u2080H\u2082\u2080O', M:156.27, cas:'2216-51-5', cid:16666,
+      Tref:298.15, Pref:4.5, dHvap:74200, bpLit:212.0, meltLit:'42 – 45 °C',
+      note:'Molécule solide à température ambiante : l\u2019écart entre 25 °C et 212 °C est grand (~190 °C), ce qui limite fortement l\u2019hypothèse de ΔvapH constante — le modèle sous-estime nettement la température réelle.' }
+  ];
+
+  function temperatureEbullition(pExtAtm, mol){
+    var Pext = pExtAtm * 101325;
+    var invT = 1/mol.Tref - (R/mol.dHvap) * Math.log(Pext/mol.Pref);
+    return 1/invT;
+  }
+  function fmt(n,d){ return n.toLocaleString('fr-FR', {minimumFractionDigits:d, maximumFractionDigits:d}); }
+
+  /* ===========================================================
+     APPLICATION (lancée seulement après connexion)
+     =========================================================== */
+  var appStarted = false;
+  var current = MOLECULES[0];
+  var viewer = null;
+  var cache = {};
+
+  function initApp(){
+    if (appStarted) return;
+    appStarted = true;
+
+    var molList = document.getElementById('mol-list');
+    MOLECULES.forEach(function(m){
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'mol-btn';
+      btn.dataset.key = m.key;
+      btn.innerHTML = m.nom + '<small>' + m.formule + '</small>';
+      btn.addEventListener('click', function(){ selectMolecule(m); });
+      molList.appendChild(btn);
+    });
+
+    if (typeof $3Dmol !== 'undefined') {
+      viewer = $3Dmol.createViewer(document.getElementById('viewer3d'), {backgroundColor:'#0d1f1a'});
+    }
+
+    var slider = document.getElementById('pressure');
+    slider.addEventListener('input', updateTemps);
+
+    selectMolecule(current);
+  }
+
+  function setActiveButton(key){
+    document.querySelectorAll('.mol-btn').forEach(function(b){
+      b.classList.toggle('active', b.dataset.key === key);
+    });
+  }
+
+  function selectMolecule(mol){
+    current = mol;
+    setActiveButton(mol.key);
+
+    document.getElementById('info-nom').textContent = mol.nom;
+    document.getElementById('info-formule').textContent = mol.formule;
+    document.getElementById('info-cas').textContent = 'CAS ' + mol.cas;
+    document.getElementById('stat-m').textContent = fmt(mol.M,2) + ' g·mol\u207b\u00b9';
+    document.getElementById('stat-fusion').textContent = mol.meltLit;
+    document.getElementById('stat-cid').textContent = mol.cid;
+    document.getElementById('mol-note').innerHTML = '<b>Note scientifique —</b> ' + mol.note;
+
+    updateTemps();
+    loadStructure(mol);
+  }
+
+  function updateTemps(){
+    var pAtm = parseFloat(document.getElementById('pressure').value);
+    document.getElementById('stat-pression').textContent = fmt(pAtm,2) + ' atm';
+    var TbK = temperatureEbullition(pAtm, current);
+    var TbC = TbK - 273.15;
+    document.getElementById('temp-calc').textContent = fmt(TbC,1) + ' °C';
+    document.getElementById('temp-calc-k').textContent = fmt(TbK,1) + ' K';
+    document.getElementById('temp-ref').textContent = fmt(current.bpLit,1) + ' °C';
+    var ecart = TbC - current.bpLit;
+    document.getElementById('temp-ecart').textContent =
+      (ecart>=0?'+':'\u2212') + fmt(Math.abs(ecart),1) + ' °C à cette pression';
+  }
+
+  function loadStructure(mol){
+    var statusEl = document.getElementById('viewer-status');
+    statusEl.textContent = 'chargement de la structure…';
+    statusEl.classList.remove('hidden');
+
+    if (!viewer) { statusEl.textContent = '3Dmol.js indisponible.'; return; }
+
+    if (cache[mol.cid]) { renderSDF(cache[mol.cid]); return; }
+
+    var url3d = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/' + mol.cid + '/SDF?record_type=3d';
+    fetch(url3d).then(function(r){
+      if (!r.ok) throw new Error('no-3d');
+      return r.text();
+    }).then(function(sdf){
+      cache[mol.cid] = sdf;
+      renderSDF(sdf);
+    }).catch(function(){
+      // repli : structure 2D si la 3D n'est pas disponible pour ce CID
+      var url2d = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/' + mol.cid + '/SDF';
+      fetch(url2d).then(function(r){ return r.text(); }).then(function(sdf){
+        cache[mol.cid] = sdf;
+        renderSDF(sdf, true);
+      }).catch(function(){
+        statusEl.textContent = 'Structure indisponible (connexion à PubChem impossible).';
+      });
+    });
+  }
+
+  function renderSDF(sdf, is2d){
+    var statusEl = document.getElementById('viewer-status');
+    viewer.clear();
+    viewer.addModel(sdf, 'sdf');
+    viewer.setStyle({}, {stick:{radius:0.14}, sphere:{scale:0.26}});
+    viewer.zoomTo();
+    viewer.render();
+    statusEl.classList.add('hidden');
+    statusEl.textContent = is2d ? 'structure 2D (3D indisponible pour cette molécule)' : 'chargement de la structure…';
+  }
+
+})();
+</script>
+</body>
+</html>
